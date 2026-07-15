@@ -1,0 +1,268 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数字分身 Agent</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0b0e14;
+  color: #c9d1d9;
+  min-height: 100dvh;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
+.header {
+  background: linear-gradient(135deg, #111827 0%, #0f172a 100%);
+  border: 1px solid #1e2a3a;
+  padding: 24px 30px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.header h1 { font-size: 24px; color: #e2e8f0; font-weight: 600; letter-spacing: -0.02em; }
+.header p { color: #64748b; margin-top: 6px; font-size: 14px; line-height: 1.6; }
+.panel {
+  background: #111827;
+  border: 1px solid #1e2a3a;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.panel h2 { font-size: 15px; color: #cbd5e1; font-weight: 500; margin-bottom: 16px; }
+.kb-status {
+  text-align: center;
+  padding: 20px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.kb-status .icon { font-size: 28px; margin-bottom: 8px; display: block; }
+.chat-section { display: flex; flex-direction: column; gap: 12px; }
+.chat-input-row { display: flex; gap: 10px; }
+.chat-input-row textarea {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #1e2a3a;
+  border-radius: 8px;
+  resize: vertical;
+  min-height: 60px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #0b0e14;
+  color: #c9d1d9;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.chat-input-row textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+.chat-input-row textarea::placeholder { color: #334155; }
+.chat-input-row button {
+  align-self: flex-end;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.chat-input-row button:hover { background: #6366f1; box-shadow: 0 0 20px rgba(99,102,241,0.25); }
+.chat-input-row button:active { background: #4f46e5; transform: scale(0.98); }
+.chat-input-row button:disabled { background: #1e2a3a; color: #475569; cursor: not-allowed; box-shadow: none; }
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.messages::-webkit-scrollbar { width: 6px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 3px; }
+.msg {
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 85%;
+  word-break: break-word;
+}
+.msg.user {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  border: 1px solid #4338ca;
+  align-self: flex-end;
+  color: #e0e7ff;
+}
+.msg.agent {
+  background: #1e293b;
+  border: 1px solid #1e2a3a;
+  align-self: flex-start;
+  color: #c9d1d9;
+}
+.msg.loading {
+  background: #0b0e14;
+  border: 1px solid #1e2a3a;
+  color: #64748b;
+  font-style: italic;
+  align-self: flex-start;
+}
+.job-btn {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.job-btn:hover { background: #6366f1; box-shadow: 0 0 20px rgba(99,102,241,0.25); }
+.job-btn:active { background: #4f46e5; transform: scale(0.98); }
+.job-result {
+  margin-top: 16px;
+  padding: 16px;
+  background: #0b0e14;
+  border: 1px solid #312e81;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #c9d1d9;
+  display: none;
+}
+.doc-info {
+  padding: 12px 16px;
+  background: #0b0e14;
+  border: 1px solid #1e2a3a;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>数字分身 Agent</h1>
+<p>上传你的简历/项目文档，HR 可通过网页向你提问，Agent 以你的口吻专业回答。</p>
+</div>
+
+<!-- 知识库状态 -->
+<div class="panel">
+<h2>知识库</h2>
+<div class="kb-status" id="kbStatus">
+<span class="icon">📚</span>
+<p>知识库由管理员统一管理，PDF 文件会自动解析并导入。</p>
+<p style="margin-top:8px;">当前文档数：<span id="docCount">0</span></p>
+</div>
+<div class="doc-info" id="docInfo" style="display:none;"></div>
+</div>
+
+<!-- 问答区域 -->
+<div class="panel">
+<h2>HR 面试问答</h2>
+<div class="chat-section">
+<div class="messages" id="messages"></div>
+<div class="chat-input-row">
+<textarea id="questionInput" placeholder="请输入 HR 面试问题..." rows="2"></textarea>
+<button id="sendBtn" onclick="sendMessage()">发送</button>
+</div>
+</div>
+</div>
+
+<!-- 岗位推荐 -->
+<div class="panel">
+<h2>岗位推荐</h2>
+<button class="job-btn" onclick="getJobRecommend()">获取推荐岗位</button>
+<div class="job-result" id="jobResult"></div>
+</div>
+</div>
+
+<script>
+const messagesEl = document.getElementById('messages');
+const questionInput = document.getElementById('questionInput');
+const sendBtn = document.getElementById('sendBtn');
+const jobResult = document.getElementById('jobResult');
+const docCountEl = document.getElementById('docCount');
+const docInfoEl = document.getElementById('docInfo');
+
+async function loadDocs() {
+try {
+const res = await fetch('/api/status');
+const data = await res.json();
+docCountEl.textContent = data.document_count;
+if (data.documents && data.documents.length > 0) {
+docInfoEl.style.display = 'block';
+docInfoEl.innerHTML = data.documents.map(d =>
+  '<div style="margin-bottom:4px;">' + d.filename + ' <span style="color:#475569;">(' + d.chunks + ' 个片段)</span></div>'
+).join('');
+} else {
+docInfoEl.style.display = 'none';
+}
+} catch (e) {}
+}
+
+async function sendMessage() {
+const question = questionInput.value.trim();
+if (!question) return;
+
+addMessage(question, 'user');
+questionInput.value = '';
+
+const loadingId = addMessage('正在思考...', 'loading');
+sendBtn.disabled = true;
+
+try {
+const formData = new FormData();
+formData.append('question', question);
+const res = await fetch('/api/chat', { method: 'POST', body: formData });
+const data = await res.json();
+
+document.getElementById(loadingId)?.remove();
+addMessage(data.answer, 'agent');
+} catch (err) {
+document.getElementById(loadingId)?.remove();
+addMessage('请求失败: ' + err.message, 'agent');
+}
+sendBtn.disabled = false;
+}
+
+function addMessage(text, type) {
+const id = 'msg_' + Date.now();
+const div = document.createElement('div');
+div.id = id;
+div.className = 'msg ' + type;
+div.textContent = text;
+messagesEl.appendChild(div);
+messagesEl.scrollTop = messagesEl.scrollHeight;
+return id;
+}
+
+async function getJobRecommend() {
+try {
+const res = await fetch('/api/recommend');
+const data = await res.json();
+jobResult.textContent = data.jobs;
+jobResult.style.display = 'block';
+} catch (err) {
+alert('获取推荐失败: ' + err.message);
+}
+}
+
+// 回车发送
+questionInput.addEventListener('keydown', e => {
+if (e.key === 'Enter' && !e.shiftKey) {
+e.preventDefault();
+sendMessage();
+}
+});
+
+// 初始化
+loadDocs();
+</script>
+</body>
+</html>
