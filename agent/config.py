@@ -1,4 +1,4 @@
-﻿"""配置管理"""
+"""配置管理"""
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,8 +12,9 @@ class Config(BaseModel):
     local_model_enabled: bool = os.getenv("LOCAL_MODEL_ENABLED", "false").lower() == "true"
     local_model_name: str = os.getenv("LOCAL_MODEL_NAME", "qwen2.5:latest")
     local_model_base_url: str = os.getenv("LOCAL_MODEL_BASE_URL", "http://localhost:11434")
-    web_host: str = os.getenv("WEB_HOST", "0.0.0.0")
+    web_host: str = os.getenv("WEB_HOST", "127.0.0.1")
     web_port: int = int(os.getenv("WEB_PORT", "8000"))
+    admin_token: str = os.getenv("ADMIN_TOKEN", "admin-secret-token")
     data_dir: Path = Path("./data")
 
     def __init__(self, **kwargs):
