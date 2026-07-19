@@ -40,7 +40,7 @@ body{
 .nav-status{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);font-size:12px;color:#22c55e}
 .nav-status::before{content:"";width:6px;height:6px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.scroll-container{height:100dvh;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth}
+.scroll-container{height:100dvh;overflow-y:scroll;}
 .page{height:100dvh;scroll-snap-align:start;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .page-1{justify-content:center;align-items:center}
 .page-2{justify-content:flex-start;align-items:center;padding-top:80px;overflow-y:auto}
@@ -172,8 +172,34 @@ body{
 var scrollContainer = document.getElementById("scrollContainer");
 var navDots = document.querySelectorAll(".nav-dot");
 
+function easeOutExpo(t) {
+  return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
+
+var isScrolling = false;
 function scrollToPage(index) {
-  scrollContainer.scrollTo({ top: scrollContainer.clientHeight * index, behavior: "smooth" });
+  if (isScrolling) return;
+  var current = scrollContainer.scrollTop;
+  var target = scrollContainer.clientHeight * index;
+  var distance = target - current;
+  var duration = Math.max(400, Math.min(1000, Math.abs(distance) * 2));
+  var startTime = null;
+  isScrolling = true;
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    var elapsed = timestamp - startTime;
+    var progress = Math.min(elapsed / duration, 1);
+    var eased = easeOutExpo(progress);
+    scrollContainer.scrollTop = current + distance * eased;
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      scrollContainer.scrollTop = target;
+      isScrolling = false;
+    }
+  }
+  requestAnimationFrame(step);
 }
 
 function updateDots() {
@@ -183,6 +209,25 @@ function updateDots() {
   });
 }
 scrollContainer.addEventListener("scroll", updateDots, { passive: true });
+
+// === 滚轮拦截：一次滚轮翻一页 ===
+var wheelAccum = 0;
+scrollContainer.addEventListener('wheel', function(e) {
+  if (scrollContainer.clientHeight * 2 <= scrollContainer.scrollHeight) {
+    wheelAccum += e.deltaY;
+    if (Math.abs(wheelAccum) > 50) {
+      var curIdx = Math.round(scrollContainer.scrollTop / scrollContainer.clientHeight);
+      var dir = wheelAccum > 0 ? 1 : -1;
+      var next = Math.max(0, Math.min(1, curIdx + dir));
+      if (next !== curIdx) scrollToPage(next);
+      wheelAccum = 0;
+      e.preventDefault();
+    }
+    clearTimeout(scrollContainer._wt);
+    scrollContainer._wt = setTimeout(function() { wheelAccum = 0; }, 150);
+  }
+}, { passive: false });
+
 
 // === 视频鼠标跟随进度 ===
 var heroVideo = document.getElementById("heroVideo");
@@ -209,7 +254,7 @@ heroVideo.addEventListener("loadedmetadata", onVideoReady);
 document.addEventListener("mousemove", function(e) {
   if (!isFinite(videoDuration) || videoDuration <= 0) return;
   // 鼠标在最左边 → 视频开头，最右边 → 视频结尾
-  var ratio = e.clientX / window.innerWidth;
+  var ratio = 1 - e.clientX / window.innerWidth;
   targetTime = ratio * videoDuration;
   if (targetTime < 0) targetTime = 0;
   if (targetTime > videoDuration) targetTime = videoDuration;
