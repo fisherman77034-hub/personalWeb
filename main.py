@@ -36,11 +36,6 @@ async def chat(question: str = Form(...)):
     response = engine.get_response(question)
     return JSONResponse({"answer": response})
 
-@app.get("/api/recommend")
-def recommend():
-    """推荐岗位"""
-    jobs = engine.recommend_jobs()
-    return JSONResponse({"jobs": jobs})
 
 @app.get("/api/status")
 def status():
